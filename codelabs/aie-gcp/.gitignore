@@ -1,0 +1,5 @@
+app-js/node_modules
+
+infrastructure/terraform.tfvars
+infrastructure/terraform.tfstate*
+infrastructure/.terraform/

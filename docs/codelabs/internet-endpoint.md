@@ -21,10 +21,11 @@ You shouldn't need more than 30 minutes to complete the codelab, once the pre-re
 ## Pre-requisites
 
 - Familiarity with either Node.js or Kotlin (we may add more examples in the future).
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.5 or newer.
 - A domain name with DNSSEC correctly configured. Use [DNSSEC Analyzer](https://dnssec-analyzer.verisignlabs.com/) to verify this.
 - A [Google Cloud Platform](https://cloud.google.com/) account with billing configured.
 - A [MongoDB Atlas](https://www.mongodb.com/atlas/database) account with billing configured.
+- [Terraform](https://developer.hashicorp.com/terraform/downloads) v1.5+.
+- [Docker](https://docs.docker.com/engine/install/).
 - A [Docker Hub](https://hub.docker.com/) account, so you can deploy the Docker image you'll create.
 - An Android device, so you can test your app end-to-end.
 
@@ -273,7 +274,206 @@ Use the outputs from the command above to complete the remaining steps by hand:
 
 ### 5. Implement your app
 
+You're basically going to implement an application that receives Awala _ping_ messages and echoes it back in the form of a _pong_ message.
+
+In this case, because we're using Google PubSub, the app wil receive the ping messages as [POST requests](https://cloud.google.com/pubsub/docs/push#receive_push) and the app will have to use a Google PubSub client to send the pong messages.
+
+The actual implementation depends on the language you use, so pick the one you're most comfortable with:
+
+{% tabs app %}
+
+{% tab app js %}
+1. Create `aie-gcp/app/package.json` with the following content:
+   ```json
+   {
+     "dependencies": {
+       "@google-cloud/pubsub": "^4.0.6",
+       "env-var": "^7.4.1",
+       "fastify": "^4.24.3"
+     }
+   }
+   ```
+2. Create `aie-gcp/app/server.js` with the following content:
+   ```js
+   import { PubSub } from '@google-cloud/pubsub';
+   import envVar from 'env-var';
+   import Fastify from 'fastify';
+   
+   const OUTGOING_MESSAGES_TOPIC = envVar.get('OUTGOING_MESSAGES_TOPIC')
+     .required().asString();
+   
+   const pubSubClient = new PubSub();
+   
+   const fastify = Fastify({ logger: true });
+   
+   fastify.get('/', async (_request, reply) => {
+     // Used by the health check
+     return reply.send('All good!');
+   });
+   
+   fastify.post('/', async (request, reply) => {
+     // Extract the message and its metadata
+     const pingData = request.body.message.data;
+     const pingMessageAttributes = request.body.message.attributes;
+     const pingSenderId = pingMessageAttributes.source;
+     const pingRecipientId = pingMessageAttributes.subject;
+
+     // Send the pong message
+     const pongEvent = {
+       data: pingData,
+       attributes: {
+         source: pingRecipientId,
+         subject: pingSenderId,
+       },
+     };
+     const topic = pubSubClient.topic(OUTGOING_MESSAGES_TOPIC);
+     await topic.publishMessage(pongEvent);
+   
+     return reply.send('Message processed');
+   });
+
+   const start = async () => {
+     try {
+       await fastify.listen({ port: 8080, host: '0.0.0.0' });
+     } catch (err) {
+      fastify.log.error(err);
+      process.exit(1);
+     }
+    }
+   start();
+   ```
+3. Now create the file `aie-gcp/app/Dockerfile` with the following content:
+   ```dockerfile
+   FROM node:20.3.1
+   WORKDIR /tmp/app
+   COPY . ./
+   RUN npm install
+   USER node
+   CMD ["node", "--unhandled-rejections=strict", "./server.js"]
+   EXPOSE 8080
+   ```
+{% endtab %}
+
+{% tab app kotlin %}
+1. Create `aie-gcp/app/build.gradle.kts` with the following content:
+   ```kotlin
+   plugins {
+       application
+       kotlin("jvm")
+   }
+   
+   application {
+      mainClass.set("com.example.ApplicationKt")
+   }
+   
+   repositories {
+      mavenCentral()
+   }
+   
+   dependencies {
+      implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.10")
+      implementation("io.ktor:ktor-server-core:2.3.4")
+      implementation("io.ktor:ktor-server-netty:2.3.4")
+   }
+   ```
+2. Create `aie-gcp/app/src/main/kotlin/com/example/Application.kt` with the following content:
+   ```kotlin
+   import com.google.cloud.pubsub.v1.Publisher
+   import com.google.protobuf.ByteString
+   import com.google.pubsub.v1.PubsubMessage
+   import com.google.pubsub.v1.TopicName
+   import io.ktor.application.*
+   import io.ktor.features.ContentNegotiation
+   import io.ktor.http.HttpStatusCode
+   import io.ktor.request.receive
+   import io.ktor.response.respond
+   import io.ktor.routing.get
+   import io.ktor.routing.post
+   import io.ktor.routing.routing
+   import io.ktor.serialization.json
+   import io.ktor.server.engine.embeddedServer
+   import io.ktor.server.netty.Netty
+   import kotlinx.serialization.Serializable
+   
+   @Serializable
+   data class Message(val data: String, val attributes: Map<String, String>)
+   
+   @Serializable
+   data class MessageRequest(val message: Message)
+   
+   fun main() {
+      val outgoingMessagesTopic = System.getenv("OUTGOING_MESSAGES_TOPIC")
+      val projectName = "your-project-id"
+   
+      embeddedServer(Netty, port = 3000, host = "0.0.0.0") {
+          install(ContentNegotiation) {
+             json()
+          }
+          routing {
+              get("/") {
+                  call.respond("All good!")
+              }
+              post("/") {
+                  val request = call.receive<MessageRequest>()
+                  val pingData = request.message.data
+                  val pingMessageAttributes = request.message.attributes
+                  val pingSenderId = pingMessageAttributes["source"]
+                  val pingRecipientId = pingMessageAttributes["subject"]
+      
+                  val pongEvent = PubsubMessage.newBuilder()
+                      .setData(ByteString.copyFromUtf8(pingData))
+                      .putAllAttributes(mapOf(
+                          "source" to pingRecipientId,
+                          "subject" to pingSenderId
+                      ))
+                      .build()
+      
+                  val topicName = TopicName.of(projectName, outgoingMessagesTopic)
+                  val publisher = Publisher.newBuilder(topicName).build()
+         
+                  publisher.publish(pongEvent).get()
+                  publisher.shutdown()
+      
+                  call.respond("Message processed")
+              }
+          }
+      }.start(wait = true)
+   }
+   ```
+3. Create the file `aie-gcp/app/Dockerfile` with the following content:
+   ```dockerfile
+   FROM gradle:7.3.1-jdk16 AS build
+   WORKDIR /home/gradle/src
+   COPY --chown=gradle:gradle . .
+   RUN gradle shadowJar --no-daemon
+   
+   FROM openjdk:16-jre-slim
+   EXPOSE 3000
+   WORKDIR /app
+   COPY --from=build /home/gradle/src/build/libs/*.jar ./app.jar
+   CMD ["java", "-jar", "./app.jar"]
+   ```
+{% endtab %}
+
+{% endtabs %}
+
+Finally, build the Docker image:
+
+```shell
+cd aie-gcp/app
+docker build -t <YOUR-DOCKER-HUB-USERNAME>/awala-codelab .
+cd -
+```
+
 ### 6. Deploy your app
+
+First, you need to get your image on Docker Hub:
+
+1. Create the repository `awala-codelab` on [Docker Hub](https://hub.docker.com/).
+2. Push your image to Docker Hub:
+   ```shell
+   docker push <YOUR-DOCKER-HUB-USERNAME>/awala-codelab
+   ```
 
 ### 7. Test your app
 
