@@ -1,5 +1,5 @@
-website/_site
-website/.sass-cache
-website/.jekyll-metadata
-website/.bundle
-website/vendor
+docs/_site
+docs/.sass-cache
+docs/.jekyll-metadata
+docs/.bundle
+docs/vendor
