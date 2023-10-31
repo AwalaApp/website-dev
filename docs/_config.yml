@@ -1,6 +1,9 @@
 title: "Awala Developers"
 description: "Documentation for software developers building Awala-compatible apps."
 
+plugins:
+  - jekyll-tabs
+
 liquid:
   error_mode: strict
   strict_filters: true
