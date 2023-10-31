@@ -475,6 +475,145 @@ First, you need to get your image on Docker Hub:
    docker push <YOUR-DOCKER-HUB-USERNAME>/awala-codelab
    ```
 
+You can now deploy your app to Cloud Run:
+
+1. Create `aie-gcp/infrastructure/pong.tf` with the following content in order to deploy your Docker image to Cloud Run, and make sure to replace `<YOUR-DOCKER-HUB-USERNAME>`:
+    ```hcl
+    resource "google_service_account" "pong" {
+      project = var.google_project_id
+    
+      account_id   = "awala-pong"
+      display_name = "Awala Pong"
+    }
+    
+    resource "google_cloud_run_v2_service" "pong" {
+      project  = var.google_project_id
+      location = var.google_region
+    
+      name    = "awala-pong"
+      ingress = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+    
+      template {
+        timeout = "300s"
+    
+        service_account = google_service_account.pong.email
+    
+        execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
+    
+        max_instance_request_concurrency = 100
+    
+        containers {
+          name  = "pong"
+          image = "<YOUR-DOCKER-HUB-USERNAME>/awala-codelab"
+    
+          env {
+            name  = "OUTGOING_MESSAGES_TOPIC"
+            value = module.awala-endpoint.pubsub_topics.outgoing_messages
+          }
+    
+          resources {
+            startup_cpu_boost = true
+            cpu_idle          = false
+    
+            limits = {
+              cpu    = 1
+              memory = "512Mi"
+            }
+          }
+    
+          startup_probe {
+            initial_delay_seconds = 3
+            failure_threshold     = 3
+            period_seconds        = 10
+            timeout_seconds       = 3
+            http_get {
+              path = "/"
+              port = 8080
+            }
+          }
+    
+          liveness_probe {
+            initial_delay_seconds = 0
+            failure_threshold     = 3
+            period_seconds        = 20
+            timeout_seconds       = 3
+            http_get {
+              path = "/"
+              port = 8080
+            }
+          }
+        }
+    
+        scaling {
+          min_instance_count = 1
+          max_instance_count = 3
+        }
+      }
+    }
+    ```
+2. Now create `aie-gcp/infrastructure/messages_incoming.tf` with the following content to configure Google PubSub to send messages to your app:
+    ```hcl
+    resource "google_service_account" "pong_invoker" {
+      project = var.google_project_id
+    
+      account_id   = "awala-pong-pubsub"
+      display_name = "Awala Pong, Cloud Run service invoker"
+    }
+    
+    resource "google_cloud_run_service_iam_binding" "pong_invoker" {
+      project = var.google_project_id
+    
+      location = google_cloud_run_v2_service.pong.location
+      service  = google_cloud_run_v2_service.pong.name
+      role     = "roles/run.invoker"
+      members  = ["serviceAccount:${google_service_account.pong_invoker.email}"]
+    }
+    
+    resource "google_pubsub_subscription" "incoming_messages" {
+      project = var.google_project_id
+    
+      name  = "pong.incoming-pings"
+      topic = module.awala-endpoint.pubsub_topics.incoming_messages
+    
+      ack_deadline_seconds       = 10
+      message_retention_duration = "259200s" # 3 days
+      retain_acked_messages      = false
+      expiration_policy {
+        ttl = "" # Never expire
+      }
+    
+      push_config {
+        push_endpoint = google_cloud_run_v2_service.pong.uri
+        oidc_token {
+          service_account_email = google_service_account.pong_invoker.email
+        }
+        attributes = {
+          x-goog-version = "v1"
+        }
+      }
+    
+      retry_policy {
+        minimum_backoff = "5s"
+      }
+    }
+    ```
+3. Finally, create `aie-gcp/infrastructure/messages_outgoing.tf` with the following content to allow your app to send messages to Google PubSub:
+    ```hcl
+    resource "google_pubsub_topic_iam_binding" "outgoing_messages_publisher" {
+      project = var.google_project_id
+    
+      topic   = module.awala-endpoint.pubsub_topics.outgoing_messages
+      role    = "roles/pubsub.publisher"
+      members = ["serviceAccount:${google_service_account.pong.email}", ]
+    }
+    ```
+
+Finally, apply your changes with Terraform:
+
+```shell
+terraform apply
+```
+
 ### 7. Test your app
 
 ## Clean up
