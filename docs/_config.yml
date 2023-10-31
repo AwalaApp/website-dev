@@ -1,6 +1,9 @@
 title: "Awala Developers"
 description: "Documentation for software developers building Awala-compatible apps."
 
+plugins:
+  - jekyll-tabs
+
 liquid:
   error_mode: strict
   strict_filters: true
@@ -23,6 +26,6 @@ remote_theme: "pmarsceill/just-the-docs@v0.7.0"
 color_scheme: dark
 search_enabled: false
 aux_links:
-  "GitHub repo": "https://github.com/relaycorp/letro-website"
+  "GitHub repo": "https://github.com/AwalaNetwork/website-dev"
   "Relaycorp": "https://relaycorp.tech"
 heading_anchors: true
