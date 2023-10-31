@@ -616,6 +616,18 @@ terraform apply
 
 ### 7. Test your app
 
+1. Install [Awala Ping for Android](https://play.google.com/store/apps/details?id=tech.relaycorp.ping).
+2. On your Android device, download the _Connection Parameters_ file from your instance of the AIE by going to the `/connection-params.der` path. For example:
+   ```
+   https://awala.your-company.com/connection-params.der
+   ```
+3. Go to Awala Ping and import the connection parameters file you just downloaded.
+4. Send a ping message to your Awala Internet address.
+
+After a few seconds, you should receive a pong message back. 🎉
+
+If not, go to the [Logging](https://console.cloud.google.com/logs/query) or [Error reporting](https://console.cloud.google.com/errors) consoles, and check if something has gone wrong.
+
 ## Clean up
 
 Run `terraform destroy` to destroy all the billable resources you created. For good measure, you should also:
@@ -625,5 +637,3 @@ Run `terraform destroy` to destroy all the billable resources you created. For g
 3. Delete the GCP credentials file from your disk.
 
 Finally, delete the directory `aie-gcp` and the DNS `SRV` record you created.
-
-## What's next?
