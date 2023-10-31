@@ -1,0 +1,5 @@
+website/_site
+website/.sass-cache
+website/.jekyll-metadata
+website/.bundle
+website/vendor

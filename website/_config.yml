@@ -1,0 +1,28 @@
+title: "Awala Developers"
+description: "Documentation for software developers building Awala-compatible apps."
+
+liquid:
+  error_mode: strict
+  strict_filters: true
+defaults:
+  - scope:
+      path: ""
+      type: pages
+    values:
+      layout: page
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - .idea
+  - README.md
+  - index.html
+
+# Theme settings
+remote_theme: "pmarsceill/just-the-docs@v0.7.0"
+color_scheme: dark
+search_enabled: false
+aux_links:
+  "GitHub repo": "https://github.com/relaycorp/letro-website"
+  "Relaycorp": "https://relaycorp.tech"
+heading_anchors: true
