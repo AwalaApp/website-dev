@@ -1,5 +1,5 @@
-title: "Awala Developers"
-description: "Documentation for software developers building Awala-compatible apps."
+title: "Awala Service Providers Guide"
+description: "Documentation for software product teams building Awala-compatible apps."
 
 plugins:
   - jekyll-tabs

@@ -1,6 +1,6 @@
 ---
-nav_order: 1
-permalink: /codelabs/internet-endpoint
+permalink: /development/codelabs/internet-endpoint
+grand_parent: Development
 parent: Codelabs
 ---
 
@@ -39,7 +39,7 @@ Make sure to [clean up at the end](#clean-up) to avoid incurring in further cost
 
 ## Troubleshooting
 
-If something doesn't work as expected at any time, [check out the final code](https://github.com/AwalaNetwork/website-dev/tree/main/codelabs/aie-gcp/) or [ask for help](../help.md).
+If something doesn't work as expected at any time, [check out the final code](https://github.com/AwalaNetwork/website-dev/tree/main/codelabs/aie-gcp/) or [ask for help](../../help.md).
 
 ## Steps
 
