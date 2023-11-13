@@ -1,5 +1,6 @@
 ---
 title: Distribution
+permalink: /distribution
 nav_order: 3
 ---
 
