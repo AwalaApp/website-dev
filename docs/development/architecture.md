@@ -15,11 +15,11 @@ Compared to traditional Internet software, DTN software has very different oppor
 
 ## Internet apps use remote procedure calls
 
-![](./diagrams/rpc.png){:.rn-side-image}
+_Remote Procedure Call_ (RPC) is the de facto communication pattern of the Internet. It underpins RESTful, gRPC and GraphQL APIs, or anything done over HTTP.
 
-_Remote Procedure Call_ (RPC) is the de facto communication pattern of the Internet. It's what underpins RESTful, gRPC and GraphQL APIs, or anything done over HTTP.
+As the name implies, RPCs resemble a pattern we developers are familiar with: Function calls. You pass some input and get some output back -- unless something goes wrong, in which case, an exception is thrown.
 
-As the name implies, RPCs resemble a pattern we developers are familiar with: Function calls. You pass some input and get some output back -- unless something goes wrong, in which case an exception is thrown.
+{% include embed_mp4_video.html path="/development/diagrams/rpc.mp4" %}
 
 But the thing with networking in the real world is that things going wrong is the rule, not the exception.
 
@@ -35,7 +35,7 @@ RPCs can work on store-and-forward networks, but only in theory: RPCs still requ
 
 In asynchronous messaging, apps don't communicate through clients and servers: They communicate through peers known as _endpoints_. Endpoints send messages to each other and there's no requirement for messages to be responded to.
 
-![](./diagrams/async-messaging.png)
+{% include embed_mp4_video.html path="/development/diagrams/async-messaging.mp4" %}
 
 Awala calls the brokers above _gateways_, and each computer/smartphone using Awala requires a so-called _private gateway_ (like [this app in the case of Android](https://play.google.com/store/apps/details?id=tech.relaycorp.gateway)). All Awala-compatible apps will send and receive data through their local private gateway.
 
